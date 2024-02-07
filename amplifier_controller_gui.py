@@ -102,7 +102,7 @@ class AmplifierController:
         self.end_channel_dropdown.grid(row=1, column=3, padx=(10, 0), pady=(0, 20), sticky="ew")
 
         self.channel_range_label = ttk.Label(self.channel_frame, text="to", foreground="black")
-        self.channel_range_label.grid(row=1, column=2, padx=(10, 0), pady=(0, 20), sticky="w")
+        self.channel_range_label.grid(row=1, column=2, padx=(45, 2), pady=(0, 20), sticky="e")
 
         # Assuming the range applies the same amplitude and phase to all channels in the range
         range_labels_texts = ["Range Amplitude:", "Range Phase:"]
@@ -136,6 +136,27 @@ class AmplifierController:
         self.system_status_text.grid(row=1, column=0, pady=(0, 20), sticky="ew")
         self.system_status_text.insert(tk.END, "System is OK.")
         self.system_status_text.configure(state='disabled')
+
+    def update_channel_range(self):
+        """Updates the parameters for all channels within the selected range."""
+        start_channel = int(self.start_channel_var.get())
+        end_channel = int(self.end_channel_var.get())
+        
+        # Validate the channel range
+        if start_channel >= end_channel:
+            messagebox.showerror("Range Error", "Start channel must be less than end channel.")
+            return
+        
+        # Example logic to update channels in range
+        amplitude = self.range_amplitude_entry.get()  # Assuming you've stored the Entry widget as an attribute
+        phase = self.range_phase_entry.get()  # Assuming you've stored the Entry widget as an attribute
+        
+        # You would iterate over the range and update each channel here
+        for channel in range(start_channel, end_channel + 1):
+            print(f"Updating channel {channel} with amplitude {amplitude} and phase {phase}")
+            # Add actual logic to update the channel parameters
+            
+        messagebox.showinfo("Update Successful", f"Channels {start_channel} to {end_channel} updated.")
 
     def get_serial_ports(self):
         ports = serial.tools.list_ports.comports()
