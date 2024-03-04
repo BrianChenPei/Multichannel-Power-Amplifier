@@ -27,9 +27,10 @@ class AmplifierController:
         self.setup_port_selection_gui(master)
         self.setup_global_parameters_gui(master)
         self.setup_channel_parameters_gui(master)
-        self.setup_send_controls_gui(master)
+        #self.setup_send_controls_gui(master)
         self.setup_system_status_gui(master)
         self.setup_stop_button_gui(master)
+        self.setup_mega_selection_gui(master)
         
         self.teensy_controller = None
         self.try_connect_teensy()
@@ -73,15 +74,28 @@ class AmplifierController:
             entry = ttk.Entry(self.global_frame, style="TEntry")
             entry.grid(row=i, column=1, pady=(0, 20), sticky="ew")
 
+    def setup_mega_selection_gui(self, master):
+        self.mega_frame = ttk.Frame(master, padding="20", style="TFrame")
+        self.mega_frame.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+
+        self.mega_label = ttk.Label(self.mega_frame, text="Select Mega 2560:", style="TLabel")
+        self.mega_label.grid(row=0, column=0, pady=(0, 10), sticky="w")
+
+        self.mega_var = tk.StringVar()
+        self.mega_dropdown = ttk.Combobox(self.mega_frame, textvariable=self.mega_var, values=list(range(1, 9)), state="readonly", style="TCombobox")
+        self.mega_dropdown.grid(row=0, column=1, pady=(0, 20), sticky="ew")
+
     def setup_channel_parameters_gui(self, master):
         self.channel_frame = ttk.Frame(master, padding="20", style="TFrame")
-        self.channel_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+        self.channel_frame.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
 
         self.channel_label = ttk.Label(self.channel_frame, text="Channel:", style="TLabel")
         self.channel_label.grid(row=0, column=0, pady=(0, 10), sticky="w")
         self.channel_var = tk.StringVar()
         self.channel_dropdown = ttk.Combobox(self.channel_frame, textvariable=self.channel_var, values=list(range(1, 22)), state="readonly", style="TCombobox")
         self.channel_dropdown.grid(row=1, column=0, pady=(0, 20), sticky="ew")
+
+        last_row_used_for_parameters = 3  # Adjust this based on your actual last row used for channel parameters
 
         self.signal_parameter_widgets = []
         for signal_number in range(1, 4):  # Assuming 3 signals per channel
@@ -97,15 +111,25 @@ class AmplifierController:
 
             self.signal_parameter_widgets.append((amplitude_entry, phase_entry))
 
+        # Place the "Initialize Parameters" button
         self.initialize_button = ttk.Button(self.channel_frame, text="Initialize Parameters", command=self.initialize_parameters, style="TButton")
-        self.initialize_button.grid(row=4, column=0, columnspan=5, pady=(10, 0), sticky="ew")
+        self.initialize_button.grid(row=last_row_used_for_parameters + 1, column=0, pady=(10, 0), sticky="ew")
 
-    def setup_send_controls_gui(self, master):
-        self.send_button_frame = ttk.Frame(master, style="TFrame")
-        self.send_button_frame.grid(row=3, column=0, pady=20, sticky="ew")
+        # Place the "Send Initialized Controls" button next to the "Initialize Parameters" button
+        self.send_initialized_button = ttk.Button(self.channel_frame, text="Send Initialized Controls", command=self.send_initialized_controls, style="TButton")
+        # Place it in the same row but the next column
+        self.send_initialized_button.grid(row=last_row_used_for_parameters + 1, column=1, pady=(10, 0), sticky="ew")
 
-        self.send_initialized_button = ttk.Button(self.send_button_frame, text="Send Initialized Controls", command=self.send_initialized_controls, style="TButton")
-        self.send_initialized_button.pack(expand=False)
+
+    def send_channel_parameters(self, mega_id, channel, phase, amplitude):
+        try:
+            if self.teensy_controller:  # Consider renaming this attribute to something more generic
+                self.teensy_controller.program_channel(mega_id, channel, phase, amplitude)
+                self.update_system_status(f"Mega {mega_id} Channel {channel} programmed.")
+            else:
+                self.update_system_status("Controller not connected.")
+        except Exception as e:
+            self.update_system_status(f"Failed to program channel: {e}")
 
     def setup_system_status_gui(self, master):
         self.status_frame = ttk.Frame(master, padding="20", style="TFrame")

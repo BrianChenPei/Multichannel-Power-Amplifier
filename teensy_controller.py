@@ -20,7 +20,7 @@ class TeensyController:
     def find_teensy_port():
         ports = list(serial.tools.list_ports.comports())
         for port in ports:
-            if "Teensy" in port.description or "USB Serial" in port.description:
+            if "Arduino Nano" in port.description or "USB Serial" in port.description:
                 return port.device
         return None
 
@@ -31,11 +31,17 @@ class TeensyController:
         global_params = {"type": "global_params", "frequency": frequency, "duty_cycle": duty_cycle, "prf": prf}
         self.serial_port.write(json.dumps(global_params).encode())
 
-    def program_channel(self, channel, phase, amplitude):
-        """Program a specific channel with phase and amplitude settings."""
+    def program_channel(self, mega_id, channel, phase, amplitude):
+        """Program a specific channel of a specific Mega 2560 with phase and amplitude settings."""
         if not self.serial_port:
             raise Exception("Serial port not initialized.")
-        channel_params = {"type": "channel_params", "channel": channel, "phase": phase, "amplitude": amplitude}
+        channel_params = {
+            "type": "channel_params",
+            "mega_id": mega_id,  # Identifier for the target Mega 2560
+            "channel": channel,
+            "phase": phase,
+            "amplitude": amplitude
+        }
         self.serial_port.write(json.dumps(channel_params).encode())
 
     def start_ultrasound(self, duration):
