@@ -68,12 +68,46 @@ class AmplifierController:
         self.global_frame = ttk.Frame(master, padding="20", style="TFrame")
         self.global_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
+        # Store references to the entry widgets for later retrieval of their values
+        self.global_parameter_entries = {}
+
         global_parameters = [("Ultrasound Frequency (kHz):", "kHz"), ("Duty Cycle (%):", "%"), ("PRF (Hz):", "Hz")]
         for i, (text, unit) in enumerate(global_parameters):
             label = ttk.Label(self.global_frame, text=text, style="TLabel")
             label.grid(row=i, column=0, pady=(0, 10), sticky="w")
             entry = ttk.Entry(self.global_frame, style="TEntry")
             entry.grid(row=i, column=1, pady=(0, 20), sticky="ew")
+            # Use the parameter name as the key in the dictionary
+            self.global_parameter_entries[text.split(" ")[0]] = entry
+
+        # Button to send global parameters
+        self.send_global_params_button = ttk.Button(self.global_frame, text="Set Global Parameters", command=self.send_global_params, style="TButton")
+        self.send_global_params_button.grid(row=len(global_parameters), column=0, columnspan=2, pady=(10, 0), sticky="ew")
+
+    def send_global_params(self):
+        """Collects global parameters from the GUI and sends them."""
+        try:
+            frequency = self.global_parameter_entries["Ultrasound"].get()  # Assuming kHz, convert to Hz if necessary
+            duty_cycle = self.global_parameter_entries["Duty"].get()
+            prf = self.global_parameter_entries["PRF"].get()
+
+            # Validate inputs or convert them to correct units if necessary
+            frequency = float(frequency) * 1000  # Convert kHz to Hz if your device expects Hz
+            duty_cycle = float(duty_cycle)
+            prf = float(prf)
+
+            # Send the parameters to the TeensyController
+            if self.teensy_controller:
+                self.teensy_controller.set_global_parameters(frequency, duty_cycle, prf)
+                self.update_system_status("Global parameters set.")
+            else:
+                messagebox.showerror("Error", "Device not connected.")
+        except ValueError:
+            messagebox.showerror("Error", "Invalid input for global parameters.")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to set global parameters: {e}")
+
+
 
     def setup_mega_selection_gui(self, master):
         self.mega_frame = ttk.Frame(master, padding="20", style="TFrame")
@@ -122,29 +156,6 @@ class AmplifierController:
         self.send_initialized_button.grid(row=last_row_used_for_parameters + 1, column=1, pady=(10, 0), sticky="ew")
 
 
-    def send_channel_params(self):
-        channel = self.channel_var.get()
-        if not channel:
-            messagebox.showerror("Error", "Please select a channel.")
-            return
-
-        signal_params = []
-        for amplitude_entry, phase_entry in self.signal_parameter_widgets:
-            amplitude = amplitude_entry.get()
-            phase = phase_entry.get()
-            if not amplitude or not phase:
-                messagebox.showerror("Error", "Missing parameters for one or more signals.")
-                return
-            signal_params.append({"phase": phase, "amplitude": amplitude})
-
-        try:
-            mega_id = 1  # Placeholder, adjust as necessary
-            self.teensy_controller.program_channel(mega_id, channel, signal_params)
-            self.update_system_status(f"Parameters sent for Channel {channel}.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to send channel parameters: {e}")
-
-
     def setup_system_status_gui(self, master):
         self.status_frame = ttk.Frame(master, padding="20", style="TFrame")
         self.status_frame.grid(row=4, column=0, padx=10, pady=10, sticky="ew")
@@ -174,18 +185,23 @@ class AmplifierController:
             self.update_system_status(f"Connection failed: {e}")
 
     def initialize_parameters(self):
-        channel = self.channel_var.get()
-        if not channel:
-            messagebox.showerror("Initialization Error", "No channel selected.")
+        mega_id = self.mega_var.get()  # Retrieve the selected Mega ID
+        channel = self.channel_var.get()  # Retrieve the selected channel
+        if not channel or not mega_id:
+            messagebox.showerror("Error", "Please select both a Mega and a channel.")
             return
 
-        parameters = []
+        signal_params = []
         for amplitude_entry, phase_entry in self.signal_parameter_widgets:
             amplitude = amplitude_entry.get()
             phase = phase_entry.get()
-            parameters.append((amplitude, phase))
+            # Ensure both phase and amplitude are provided for each signal
+            if not amplitude or not phase:
+                messagebox.showerror("Error", "Missing parameters for one or more signals.")
+                return
+            signal_params.append({"phase": phase, "amplitude": amplitude})
 
-        self.initialized_parameters[channel] = parameters
+        self.initialized_parameters[channel] = signal_params
         self.update_system_status(f"Parameters initialized for channel {channel} but not sent.")
 
     def send_initialized_controls(self):
@@ -193,9 +209,9 @@ class AmplifierController:
             messagebox.showerror("Operation Error", "Not connected to Teensy.")
             return
 
-        for channel, parameters in self.initialized_parameters.items():
-            self.teensy_controller.program_channel(channel, parameters)
-            self.update_system_status(f"Sent initialized parameters to channel {channel}.")
+        for mega_id, channel, signal_params in self.initialized_parameters.items():
+            self.teensy_controller.program_channel(int(mega_id), channel, signal_params)
+            self.update_system_status(f"Parameters sent for Channel {channel} on Mega {mega_id}.")
 
         self.initialized_parameters.clear()
 
