@@ -6,6 +6,7 @@ class TeensyController:
     def __init__(self, port=None, baud_rate=115200):
         self.serial_port = None
         self.port = port if port is not None else self.find_teensy_port()
+        self.initialized_parameters = {}  # For storing initialized parameters
         if self.port:
             try:
                 self.serial_port = serial.Serial(self.port, baud_rate, timeout=1)
@@ -17,10 +18,8 @@ class TeensyController:
 
     @staticmethod
     def find_teensy_port():
-        """Attempt to find the port where the Teensy is connected based on its description."""
         ports = list(serial.tools.list_ports.comports())
         for port in ports:
-            # Adjust this condition based on your Teensy's description
             if "Teensy" in port.description or "USB Serial" in port.description:
                 return port.device
         return None
@@ -55,13 +54,31 @@ class TeensyController:
         if status:
             return json.loads(status)
         return {"status": "No response"}
+    
+    def stop_ultrasound(self):
+        """Send a stop command to the Teensy."""
+        if not self.serial_port:
+            raise Exception("Serial port not initialized.")
+        stop_message = {"type": "stop"}
+        self.serial_port.write(json.dumps(stop_message).encode())
 
-# Example usage code (if run as a standalone script)
+    def store_initialized_parameters(self, channel, phase, amplitude):
+        """Store parameters for a specific channel without sending them to the Teensy."""
+        self.initialized_parameters[channel] = {"phase": phase, "amplitude": amplitude}
+
+    def send_stored_parameters(self):
+        """Send all stored (initialized) parameters to the Teensy."""
+        for channel, params in self.initialized_parameters.items():
+            self.program_channel(channel, params["phase"], params["amplitude"])
+        self.initialized_parameters.clear()  # Clear after sending
+
 if __name__ == "__main__":
     try:
         teensy = TeensyController()  # Attempt to auto-detect and connect
-        # Example of setting global parameters, adjust as needed
-        teensy.set_global_parameters(frequency=1e6, duty_cycle=50, prf=1000)
-        print("Teensy initialized and global parameters set.")
+        # Example of storing and then sending parameters
+        teensy.store_initialized_parameters(channel=1, phase=90, amplitude=50)
+        print("Parameters stored.")
+        teensy.send_stored_parameters()
+        print("Stored parameters sent.")
     except Exception as e:
         print(str(e))
