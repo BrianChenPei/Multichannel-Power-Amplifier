@@ -1,21 +1,22 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import serial.tools.list_ports
+from teensy_controller import TeensyController
 
-class TeensyController:
-    def __init__(self, port):
-        self.port = port
-        print(f"Connected to {port}")
+# class TeensyController:
+#     def __init__(self, port):
+#         self.port = port
+#         print(f"Connected to {port}")
 
-    def program_channel(self, channel, signal_parameters):
-        print(f"Channel {channel} programmed with {signal_parameters}")
+#     def program_channel(self, channel, signal_parameters):
+#         print(f"Channel {channel} programmed with {signal_parameters}")
     
-    def stop_ultrasound(self):
-        """Send a stop command to the Teensy."""
-        if not self.serial_port:
-            raise Exception("Serial port not initialized.")
-        stop_message = {"type": "stop"}
-        self.serial_port.write(json.dumps(stop_message).encode())
+#     def stop_ultrasound(self):
+#         """Send a stop command to the Teensy."""
+#         if not self.serial_port:
+#             raise Exception("Serial port not initialized.")
+#         stop_message = {"type": "stop"}
+#         self.serial_port.write(json.dumps(stop_message).encode())
 
 class AmplifierController:
     def __init__(self, master):
@@ -89,25 +90,25 @@ class AmplifierController:
         self.channel_frame = ttk.Frame(master, padding="20", style="TFrame")
         self.channel_frame.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
 
+        last_row_used_for_parameters = 4
+
         self.channel_label = ttk.Label(self.channel_frame, text="Channel:", style="TLabel")
         self.channel_label.grid(row=0, column=0, pady=(0, 10), sticky="w")
         self.channel_var = tk.StringVar()
         self.channel_dropdown = ttk.Combobox(self.channel_frame, textvariable=self.channel_var, values=list(range(1, 22)), state="readonly", style="TCombobox")
         self.channel_dropdown.grid(row=1, column=0, pady=(0, 20), sticky="ew")
 
-        last_row_used_for_parameters = 3  # Adjust this based on your actual last row used for channel parameters
-
         self.signal_parameter_widgets = []
         for signal_number in range(1, 4):  # Assuming 3 signals per channel
             amplitude_label = ttk.Label(self.channel_frame, text=f"Signal {signal_number} Amplitude (mA):", style="TLabel")
-            amplitude_label.grid(row=signal_number, column=1, pady=(0, 10), sticky="w")
+            amplitude_label.grid(row=signal_number + 1, column=1, pady=(0, 10), sticky="w")
             amplitude_entry = ttk.Entry(self.channel_frame, style="TEntry")
-            amplitude_entry.grid(row=signal_number, column=2, pady=(0, 20), sticky="ew")
+            amplitude_entry.grid(row=signal_number + 1, column=2, pady=(0, 20), sticky="ew")
 
             phase_label = ttk.Label(self.channel_frame, text=f"Signal {signal_number} Phase (degrees):", style="TLabel")
-            phase_label.grid(row=signal_number, column=3, pady=(0, 10), sticky="w")
+            phase_label.grid(row=signal_number + 1, column=3, pady=(0, 10), sticky="w")
             phase_entry = ttk.Entry(self.channel_frame, style="TEntry")
-            phase_entry.grid(row=signal_number, column=4, pady=(0, 20), sticky="ew")
+            phase_entry.grid(row=signal_number + 1, column=4, pady=(0, 20), sticky="ew")
 
             self.signal_parameter_widgets.append((amplitude_entry, phase_entry))
 
@@ -121,15 +122,28 @@ class AmplifierController:
         self.send_initialized_button.grid(row=last_row_used_for_parameters + 1, column=1, pady=(10, 0), sticky="ew")
 
 
-    def send_channel_parameters(self, mega_id, channel, phase, amplitude):
+    def send_channel_params(self):
+        channel = self.channel_var.get()
+        if not channel:
+            messagebox.showerror("Error", "Please select a channel.")
+            return
+
+        signal_params = []
+        for amplitude_entry, phase_entry in self.signal_parameter_widgets:
+            amplitude = amplitude_entry.get()
+            phase = phase_entry.get()
+            if not amplitude or not phase:
+                messagebox.showerror("Error", "Missing parameters for one or more signals.")
+                return
+            signal_params.append({"phase": phase, "amplitude": amplitude})
+
         try:
-            if self.teensy_controller:  # Consider renaming this attribute to something more generic
-                self.teensy_controller.program_channel(mega_id, channel, phase, amplitude)
-                self.update_system_status(f"Mega {mega_id} Channel {channel} programmed.")
-            else:
-                self.update_system_status("Controller not connected.")
+            mega_id = 1  # Placeholder, adjust as necessary
+            self.teensy_controller.program_channel(mega_id, channel, signal_params)
+            self.update_system_status(f"Parameters sent for Channel {channel}.")
         except Exception as e:
-            self.update_system_status(f"Failed to program channel: {e}")
+            messagebox.showerror("Error", f"Failed to send channel parameters: {e}")
+
 
     def setup_system_status_gui(self, master):
         self.status_frame = ttk.Frame(master, padding="20", style="TFrame")
