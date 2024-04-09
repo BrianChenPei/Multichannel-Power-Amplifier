@@ -3,21 +3,6 @@ from tkinter import ttk, messagebox
 import serial.tools.list_ports
 from teensy_controller import TeensyController
 
-# class TeensyController:
-#     def __init__(self, port):
-#         self.port = port
-#         print(f"Connected to {port}")
-
-#     def program_channel(self, channel, signal_parameters):
-#         print(f"Channel {channel} programmed with {signal_parameters}")
-    
-#     def stop_ultrasound(self):
-#         """Send a stop command to the Teensy."""
-#         if not self.serial_port:
-#             raise Exception("Serial port not initialized.")
-#         stop_message = {"type": "stop"}
-#         self.serial_port.write(json.dumps(stop_message).encode())
-
 class AmplifierController:
     def __init__(self, master):
         self.master = master
@@ -38,6 +23,9 @@ class AmplifierController:
 
         # Store for initialized but not yet sent channel parameters
         self.initialized_parameters = {}
+
+    def pack_protocol_data(mega, channel, freq, duty, prf, signal1, degrees1, signal2, degrees2, signal3, degrees3):
+        return struct.pack('BBBBBHHHHHH', mega, channel, freq, duty, prf, signal1, degrees1, signal2, degrees2, signal3, degrees3)
 
     def configure_styles(self):
         style = ttk.Style()
@@ -238,6 +226,7 @@ class AmplifierController:
                 self.update_system_status("Teensy not connected.")
         except Exception as e:
             self.update_system_status(f"Failed to send stop command: {e}")
+
 
 if __name__ == "__main__":
     root = tk.Tk()
