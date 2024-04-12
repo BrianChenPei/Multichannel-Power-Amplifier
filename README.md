@@ -24,7 +24,7 @@ git clone https://github.com/yourusername/Multichannel-Power-Amplifier.git
 
 You can install the required packages using pip:
 
-pip install pyserial tkinter
+pip install pyserial tk
 
 
 ## Usage
